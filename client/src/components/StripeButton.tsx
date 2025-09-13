@@ -32,11 +32,31 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
         if (checkoutWindow) {
           setIsProcessing(true);
           
-          // Poll for payment completion
+          // Poll for payment completion with timeout
+          let pollStartTime = Date.now();
+          const POLL_TIMEOUT = 3 * 60 * 1000; // 3 minutes timeout
+          
           const pollPaymentStatus = async () => {
             try {
+              // Check for timeout (3 minutes)
+              if (Date.now() - pollStartTime > POLL_TIMEOUT) {
+                setIsProcessing(false);
+                if (checkoutWindow && !checkoutWindow.closed) {
+                  checkoutWindow.close();
+                }
+                toast({
+                  title: "Payment processing timeout",
+                  description: "Payment is taking longer than expected. Please check your account or try again.",
+                  variant: "destructive",
+                });
+                onError?.();
+                return;
+              }
+              
               const statusResponse = await apiRequest("GET", `/api/payment-status/${data.sessionId}`);
               const statusData = await statusResponse.json();
+              
+              console.log(`[STRIPE FRONTEND] Payment status: ${statusData.status}`);
               
               if (statusData.status === 'completed') {
                 setIsProcessing(false);
@@ -82,6 +102,7 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
               setTimeout(pollPaymentStatus, 2000);
             } catch (error) {
               console.error('Error checking payment status:', error);
+              // Continue polling even on errors, but respect timeout
               setTimeout(pollPaymentStatus, 2000);
             }
           };
