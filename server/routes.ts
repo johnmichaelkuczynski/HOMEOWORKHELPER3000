@@ -2175,8 +2175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         mode: 'payment',
-        success_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=success`,
-        cancel_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=cancelled`,
+        success_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=cancelled&session_id={CHECKOUT_SESSION_ID}`,
         client_reference_id: req.session.userId.toString(),
         metadata: {
           userId: req.session.userId.toString(),
@@ -2210,10 +2210,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Payment status checking endpoint
   app.get('/api/payment-status/:sessionId', async (req, res) => {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
       const { sessionId } = req.params;
       console.log(`[STRIPE DEBUG] Checking payment status for session: ${sessionId}`);
       
@@ -2227,7 +2223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         mode: session.mode,
         amount_total: session.amount_total,
         currency: session.currency,
-        metadata: session.metadata
+        metadata: session.metadata,
+        client_reference_id: session.client_reference_id
       });
       
       if (session.payment_status === 'paid' && session.status === 'complete') {
@@ -2238,12 +2235,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`[STRIPE DEBUG] Existing payment record:`, existingPayment);
         
         if (existingPayment && existingPayment.status !== 'completed') {
-          // Credit the tokens
-          const tokens = parseInt(session.metadata?.tokens || '0');
-          const userId = parseInt(session.metadata?.userId || '0');
-          console.log(`[STRIPE DEBUG] Crediting ${tokens} tokens to user ${userId}`);
+          // Credit the tokens from our payment record (more reliable than Stripe metadata)
+          const tokens = existingPayment.tokens;
+          const userId = existingPayment.userId;
+          console.log(`[STRIPE DEBUG] Crediting ${tokens} tokens to user ${userId} from payment record`);
           
-          if (tokens > 0 && userId === req.session.userId) {
+          if (tokens > 0 && userId > 0) {
             // Update user's token balance
             const user = await authService.getUserById(userId);
             if (user) {
@@ -2255,7 +2252,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.error(`[STRIPE DEBUG] User ${userId} not found when crediting tokens`);
             }
           } else {
-            console.error(`[STRIPE DEBUG] Invalid token credit parameters: tokens=${tokens}, userId=${userId}, sessionUserId=${req.session.userId}`);
+            console.error(`[STRIPE DEBUG] Invalid token credit parameters: tokens=${tokens}, userId=${userId}`);
           }
         } else {
           console.log(`[STRIPE DEBUG] Tokens already credited for session: ${sessionId}`);
@@ -2290,11 +2287,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/webhook/stripe', async (req, res) => {
     try {
+      if (!process.env.STRIPE_WEBHOOK_SECRET) {
+        console.error('[STRIPE WEBHOOK] STRIPE_WEBHOOK_SECRET environment variable is required');
+        return res.status(500).json({ error: 'Webhook not configured' });
+      }
+      
       const sig = req.headers['stripe-signature'];
+      // Note: This expects raw body, not JSON parsed. Make sure Express is configured correctly for webhooks.
       const event = stripe.webhooks.constructEvent(
         req.body,
         sig as string,
-        process.env.STRIPE_WEBHOOK_SECRET || 'whsec_test'
+        process.env.STRIPE_WEBHOOK_SECRET
       );
       
       if (event.type === 'checkout.session.completed') {
