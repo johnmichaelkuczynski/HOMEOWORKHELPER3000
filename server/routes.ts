@@ -2179,7 +2179,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
-      res.json({ sessionId: session.id });
+      res.json({ 
+        sessionId: session.id,
+        url: session.url 
+      });
     } catch (error) {
       console.error('Stripe session creation error:', error);
       res.status(500).json({ error: 'Failed to create payment session' });
