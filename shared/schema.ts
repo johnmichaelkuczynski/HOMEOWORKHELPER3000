@@ -192,6 +192,30 @@ export const rewriteResponseSchema = z.object({
 export type RewriteRequest = z.infer<typeof rewriteRequestSchema>;
 export type RewriteResponse = z.infer<typeof rewriteResponseSchema>;
 
+// Stripe payments table
+export const stripePayments = pgTable("stripe_payments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
+  stripeSessionId: text("stripe_session_id").notNull().unique(),
+  stripePaymentIntentId: text("stripe_payment_intent_id"),
+  amount: integer("amount").notNull(),
+  tokens: integer("tokens").notNull(),
+  status: text("status").notNull().default("pending"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+  completedAt: timestamp("completed_at"),
+});
+
+export const insertStripePaymentSchema = createInsertSchema(stripePayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type StripePayment = typeof stripePayments.$inferSelect;
+export type InsertStripePayment = z.infer<typeof insertStripePaymentSchema>;
+
 // Payment schemas
 export const purchaseCreditsSchema = z.object({
   amount: z.enum(['1', '10', '100', '1000']),

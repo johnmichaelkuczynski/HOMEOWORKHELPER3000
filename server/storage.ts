@@ -1,4 +1,4 @@
-import { assignments, users, tokenUsage, dailyUsage, documents, rewriteJobs, type Assignment, type InsertAssignment, type User, type InsertUser, type TokenUsage, type InsertTokenUsage, type DailyUsage, type InsertDailyUsage, type Document, type InsertDocument, type RewriteJob, type InsertRewriteJob } from "@shared/schema";
+import { assignments, users, tokenUsage, dailyUsage, documents, rewriteJobs, stripePayments, type Assignment, type InsertAssignment, type User, type InsertUser, type TokenUsage, type InsertTokenUsage, type DailyUsage, type InsertDailyUsage, type Document, type InsertDocument, type RewriteJob, type InsertRewriteJob, type StripePayment, type InsertStripePayment } from "@shared/schema";
 import { db } from "./db";
 import { eq, isNull, and, sum } from "drizzle-orm";
 
@@ -29,6 +29,11 @@ export interface IStorage {
   getRewriteJob(id: string): Promise<RewriteJob | undefined>;
   updateRewriteJob(id: string, updates: Partial<RewriteJob>): Promise<void>;
   getRewriteJobs(limit?: number): Promise<RewriteJob[]>;
+  
+  // Stripe payment methods
+  createStripePayment(payment: InsertStripePayment): Promise<StripePayment>;
+  getStripePaymentBySessionId(sessionId: string): Promise<StripePayment | undefined>;
+  updateStripePaymentStatus(sessionId: string, status: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -192,6 +197,34 @@ export class DatabaseStorage implements IStorage {
       .orderBy(rewriteJobs.createdAt)
       .limit(limit);
   }
+  
+  // Stripe payment methods
+  async createStripePayment(insertPayment: InsertStripePayment): Promise<StripePayment> {
+    const [payment] = await db
+      .insert(stripePayments)
+      .values(insertPayment)
+      .returning();
+    return payment;
+  }
+
+  async getStripePaymentBySessionId(sessionId: string): Promise<StripePayment | undefined> {
+    const [payment] = await db
+      .select()
+      .from(stripePayments)
+      .where(eq(stripePayments.stripeSessionId, sessionId));
+    return payment || undefined;
+  }
+
+  async updateStripePaymentStatus(sessionId: string, status: string): Promise<void> {
+    await db
+      .update(stripePayments)
+      .set({ 
+        status,
+        updatedAt: new Date(),
+        completedAt: status === 'completed' ? new Date() : undefined
+      })
+      .where(eq(stripePayments.stripeSessionId, sessionId));
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -308,6 +341,19 @@ export class MemStorage implements IStorage {
   async getRewriteJob(): Promise<RewriteJob | undefined> { return undefined; }
   async updateRewriteJob(): Promise<void> { throw new Error("MemStorage does not support rewrite jobs"); }
   async getRewriteJobs(): Promise<RewriteJob[]> { return []; }
+  
+  // Stripe payment methods (not implemented for MemStorage)
+  async createStripePayment(payment: InsertStripePayment): Promise<StripePayment> {
+    throw new Error("Stripe payments not supported in MemStorage");
+  }
+
+  async getStripePaymentBySessionId(sessionId: string): Promise<StripePayment | undefined> {
+    return undefined;
+  }
+
+  async updateStripePaymentStatus(sessionId: string, status: string): Promise<void> {
+    // No-op for MemStorage
+  }
 }
 
 export const storage = new DatabaseStorage();

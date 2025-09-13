@@ -2179,6 +2179,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       });
       
+      // Create payment record in database
+      await storage.createStripePayment({
+        userId: req.session.userId,
+        stripeSessionId: session.id,
+        amount: parseInt(amount),
+        tokens: tokens,
+        status: 'pending',
+        metadata: { 
+          amount: amount,
+          sessionUrl: session.url 
+        }
+      });
+      
       res.json({ 
         sessionId: session.id,
         url: session.url 
@@ -2186,6 +2199,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Stripe session creation error:', error);
       res.status(500).json({ error: 'Failed to create payment session' });
+    }
+  });
+
+  // Payment status checking endpoint
+  app.get('/api/payment-status/:sessionId', async (req, res) => {
+    try {
+      if (!req.session.userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const { sessionId } = req.params;
+      
+      // Retrieve the session from Stripe
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      
+      if (session.payment_status === 'paid' && session.status === 'complete') {
+        // Payment completed - check if tokens already credited
+        const existingPayment = await storage.getStripePaymentBySessionId(sessionId);
+        
+        if (existingPayment && existingPayment.status !== 'completed') {
+          // Credit the tokens
+          const tokens = parseInt(session.metadata?.tokens || '0');
+          const userId = parseInt(session.metadata?.userId || '0');
+          
+          if (tokens > 0 && userId === req.session.userId) {
+            // Update user's token balance
+            const user = await authService.getUserById(userId);
+            if (user) {
+              await storage.updateUserTokenBalance(userId, (user.tokenBalance || 0) + tokens);
+              await storage.updateStripePaymentStatus(sessionId, 'completed');
+            }
+          }
+        }
+        
+        res.json({ status: 'completed' });
+      } else if (session.status === 'expired') {
+        res.json({ status: 'failed' });
+      } else {
+        res.json({ status: 'pending' });
+      }
+    } catch (error) {
+      console.error('Payment status check error:', error);
+      res.status(500).json({ error: 'Failed to check payment status' });
     }
   });
 
@@ -2206,7 +2262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update user's token balance
         const user = await authService.getUserById(userId);
         if (user) {
-          await storage.updateUserTokenBalance(userId, user.tokenBalance + tokens);
+          await storage.updateUserTokenBalance(userId, (user.tokenBalance || 0) + tokens);
         }
       }
       
