@@ -19,10 +19,10 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
 
   const createCheckoutSession = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest(`/api/stripe/create-checkout-session`, "POST", {
+      const response = await apiRequest("POST", `/api/stripe/create-checkout-session`, {
         amount: parseFloat(amount),
       });
-      return response;
+      return await response.json();
     },
     onSuccess: (data: any) => {
       if (data.url) {
@@ -35,9 +35,10 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
           // Poll for payment completion
           const pollPaymentStatus = async () => {
             try {
-              const statusResponse = await apiRequest(`/api/payment-status/${data.sessionId}`, "GET");
+              const statusResponse = await apiRequest("GET", `/api/payment-status/${data.sessionId}`);
+              const statusData = await statusResponse.json();
               
-              if ((statusResponse as any).status === 'completed') {
+              if (statusData.status === 'completed') {
                 setIsProcessing(false);
                 toast({
                   title: "Payment successful!",
@@ -46,7 +47,7 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
                 queryClient.invalidateQueries({ queryKey: ["/api/me"] });
                 onSuccess?.();
                 return;
-              } else if ((statusResponse as any).status === 'failed') {
+              } else if (statusData.status === 'failed') {
                 setIsProcessing(false);
                 toast({
                   title: "Payment failed",
