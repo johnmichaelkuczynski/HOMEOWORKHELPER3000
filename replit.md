@@ -68,3 +68,11 @@ The application employs a clear client-server architecture.
   - Fixed popup window auto-close functionality for seamless user experience
   - Verified end-to-end payment flow with live Stripe integration
   - Dual payment system now fully operational and tested
+- **Critical Stripe Deployment Fixes**: Resolved production payment failures with comprehensive security and reliability improvements
+  - Removed dangerous fallback keys and implemented fail-fast environment variable validation
+  - Fixed redirect reconciliation by adding session_id to success/cancel URLs for proper post-payment handling
+  - Eliminated session dependency from payment status endpoint to prevent 401 errors after cross-site redirects
+  - Enhanced webhook security by removing insecure fallbacks and requiring proper environment configuration
+  - Improved token crediting reliability by using server-side payment records instead of Stripe metadata
+  - Added comprehensive debug logging for production troubleshooting
+  - Updated to valid Stripe API version (2024-06-20) for stable production behavior
