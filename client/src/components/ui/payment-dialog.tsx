@@ -3,11 +3,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Loader2, CreditCard, Star, Zap, Crown, Diamond } from "lucide-react";
 import PayPalButton from "@/components/PayPalButton";
+import StripeButton from "@/components/StripeButton";
 
 interface PaymentDialogProps {
   open: boolean;
@@ -52,6 +54,7 @@ const creditTiers = [
 
 export function PaymentDialog({ open, onClose, user }: PaymentDialogProps) {
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -138,12 +141,28 @@ export function PaymentDialog({ open, onClose, user }: PaymentDialogProps) {
                     ${(parseFloat(tier.amount) / tier.tokens * 1000).toFixed(3)} per 1K tokens
                   </div>
                   {selectedTier === tier.amount ? (
-                    <div className="w-full">
-                      <PayPalButton
-                        amount={tier.amount}
-                        currency="USD"
-                        intent="capture"
-                      />
+                    <div className="w-full space-y-3">
+                      <Tabs value={paymentMethod} onValueChange={(value) => setPaymentMethod(value as 'stripe' | 'paypal')}>
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="stripe">Stripe</TabsTrigger>
+                          <TabsTrigger value="paypal">PayPal</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="stripe" className="mt-3">
+                          <StripeButton
+                            amount={tier.amount}
+                            tokens={tier.tokens}
+                            onSuccess={() => handlePaymentSuccess(tier.tokens)}
+                            onError={handlePaymentError}
+                          />
+                        </TabsContent>
+                        <TabsContent value="paypal" className="mt-3">
+                          <PayPalButton
+                            amount={tier.amount}
+                            currency="USD"
+                            intent="capture"
+                          />
+                        </TabsContent>
+                      </Tabs>
                     </div>
                   ) : (
                     <Button 
@@ -174,7 +193,7 @@ export function PaymentDialog({ open, onClose, user }: PaymentDialogProps) {
         </div>
         
         <div className="text-xs text-muted-foreground text-center mt-4">
-          Secure payment powered by PayPal. All transactions are encrypted and secure.
+          Secure payment powered by Stripe and PayPal. All transactions are encrypted and secure.
         </div>
       </DialogContent>
     </Dialog>
