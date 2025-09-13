@@ -33,7 +33,7 @@ The application employs a clear client-server architecture.
 - **LLM Integration**: Designed for multiple AI providers, allowing user selection and leveraging their capabilities for detailed solutions. Intelligent content detection ensures LaTeX notation is applied only to mathematical problems.
 - **Voice Input**: Utilizes browser Web Speech API and Azure Speech Services for real-time transcription.
 - **Mathematical Notation**: MathJax integration provides full LaTeX support, optimized for display and PDF export.
-- **Token-Based Payment System**: Implemented with PayPal integration for user authentication and session tracking.
+- **Dual Payment System**: Complete payment infrastructure with both PayPal and Stripe integration for user authentication, session tracking, and flexible payment options.
 - **Multi-User Data Isolation**: A single shared PostgreSQL database enforces user-scoped data access via `user_id` filtering, preventing cross-user data access and ensuring secure deletion. Includes support for anonymous users.
 - **GPT BYPASS**: Integrated functionality for text rewriting and AI detection score reduction, with a dedicated interface and seamless workflow between homework assistant and bypass features.
 
@@ -41,7 +41,7 @@ The application employs a clear client-server architecture.
 
 - **Database**: PostgreSQL
 - **LLM APIs**: Anthropic, OpenAI, Azure OpenAI, DeepSeek, Perplexity
-- **Payment Gateway**: PayPal
+- **Payment Gateways**: PayPal and Stripe
 - **CDN Services**: MathJax, Google Fonts
 - **Speech Services**: Azure Cognitive Services (optional)
 
@@ -58,3 +58,13 @@ The application employs a clear client-server architecture.
   - Added user controls to select/deselect specific chunks for processing
   - Includes 'Select All' and 'Select None' buttons for chunk selection
   - Processes selected chunks sequentially with individual AI scoring and progress tracking
+
+### September 13, 2025
+- **Complete Stripe Payment Integration**: Successfully implemented full Stripe payment system alongside existing PayPal
+  - Created stripe_payments database table for payment tracking and status management
+  - Built complete payment infrastructure from database schema to frontend components
+  - Implemented tabbed payment interface allowing users to choose between PayPal and Stripe
+  - Added automatic token crediting upon successful payment completion
+  - Fixed popup window auto-close functionality for seamless user experience
+  - Verified end-to-end payment flow with live Stripe integration
+  - Dual payment system now fully operational and tested
