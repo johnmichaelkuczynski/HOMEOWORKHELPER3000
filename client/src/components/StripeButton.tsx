@@ -86,8 +86,30 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
                 return;
               }
               
-              // Check if window was closed manually by user
+              // Check if window was closed manually by user, but only after checking payment status
+              // This prevents race conditions where the window closes just as payment completes
               if (checkoutWindow.closed) {
+                // Give one final check for payment completion before marking as cancelled
+                try {
+                  const finalStatusResponse = await apiRequest("GET", `/api/payment-status/${data.sessionId}`);
+                  const finalStatusData = await finalStatusResponse.json();
+                  
+                  if (finalStatusData.status === 'completed') {
+                    // Payment actually completed! Show success
+                    setIsProcessing(false);
+                    toast({
+                      title: "Payment successful!",
+                      description: `${tokens.toLocaleString()} tokens have been added to your account`,
+                    });
+                    queryClient.invalidateQueries({ queryKey: ["/api/me"] });
+                    onSuccess?.();
+                    return;
+                  }
+                } catch (error) {
+                  console.error('Final status check failed:', error);
+                }
+                
+                // Only show cancelled if payment definitely didn't complete
                 setIsProcessing(false);
                 toast({
                   title: "Payment cancelled",
