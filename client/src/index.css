@@ -1,0 +1,259 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Print styles for PDF export */
+@media print {
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  /* Hide UI elements but keep content visible */
+  button, nav, header, .print-hide {
+    display: none !important;
+  }
+  
+  /* Show only the math content */
+  .math-content, .math-content * {
+    visibility: visible !important;
+  }
+  
+  /* Position and style the solution content for printing */
+  .math-content {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    color: black !important;
+    font-family: 'Times New Roman', serif !important;
+    font-size: 14pt !important;
+    line-height: 1.8 !important;
+    padding: 40px !important;
+    margin: 0 !important;
+  }
+  
+  /* Format paragraphs and line breaks properly */
+  .math-content div {
+    margin-bottom: 16px !important;
+    page-break-inside: avoid !important;
+  }
+}
+
+/* Enhanced math rendering styles */
+.math-content {
+  font-family: 'Times New Roman', 'Computer Modern', serif;
+}
+
+.math-content .math-display {
+  display: block;
+  text-align: center;
+  margin: 1.5em 0;
+  padding: 0.5em 0;
+  overflow-x: auto;
+}
+
+.math-content .math-inline {
+  display: inline;
+  margin: 0 0.1em;
+}
+
+.math-content h1, .math-content h2, .math-content h3 {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.math-content p {
+  margin-bottom: 1em;
+  text-align: justify;
+  hyphens: auto;
+}
+
+.math-content li {
+  margin-bottom: 0.5em;
+  list-style-type: disc;
+}
+
+/* Enhanced text formatting for better readability */
+.math-content {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.math-content strong {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.math-content em {
+  font-style: italic;
+  color: #475569;
+}
+
+.math-content ul {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.math-content ol {
+  margin: 1em 0;
+  padding-left: 1.5em;
+}
+
+.math-content code {
+  background-color: #f1f5f9;
+  color: #1e293b;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.math-content pre {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 1em;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.math-content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* MathJax output styling */
+.MathJax {
+  outline: none;
+}
+
+.MathJax_Display {
+  text-align: center !important;
+  margin: 1em 0 !important;
+}
+
+:root {
+      --background: 0 0% 100%;
+--foreground: 20 14.3% 4.1%;
+--muted: 60 4.8% 95.9%;
+--muted-foreground: 25 5.3% 44.7%;
+--popover: 0 0% 100%;
+--popover-foreground: 20 14.3% 4.1%;
+--card: 0 0% 100%;
+--card-foreground: 20 14.3% 4.1%;
+--border: 20 5.9% 90%;
+--input: 20 5.9% 90%;
+--primary: 207 90% 54%;
+--primary-foreground: 211 100% 99%;
+--secondary: 60 4.8% 95.9%;
+--secondary-foreground: 24 9.8% 10%;
+--accent: 60 4.8% 95.9%;
+--accent-foreground: 24 9.8% 10%;
+--destructive: 0 84.2% 60.2%;
+--destructive-foreground: 60 9.1% 97.8%;
+--ring: 20 14.3% 4.1%;
+--radius: 0.5rem;
+  }
+  .dark {
+      --background: 240 10% 3.9%;
+--foreground: 0 0% 98%;
+--muted: 240 3.7% 15.9%;
+--muted-foreground: 240 5% 64.9%;
+--popover: 240 10% 3.9%;
+--popover-foreground: 0 0% 98%;
+--card: 240 10% 3.9%;
+--card-foreground: 0 0% 98%;
+--border: 240 3.7% 15.9%;
+--input: 240 3.7% 15.9%;
+--primary: 207 90% 54%;
+--primary-foreground: 211 100% 99%;
+--secondary: 240 3.7% 15.9%;
+--secondary-foreground: 0 0% 98%;
+--accent: 240 3.7% 15.9%;
+--accent-foreground: 0 0% 98%;
+--destructive: 0 62.8% 30.6%;
+--destructive-foreground: 0 0% 98%;
+--ring: 240 4.9% 83.9%;
+--radius: 0.5rem;
+  }
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+/* Print/PDF styles for perfect math notation */
+@media print {
+  /* Hide UI elements but keep structure */
+  header, nav, button, .print-hide {
+    display: none !important;
+  }
+  
+  /* Hide everything except main content */
+  body > :not(#root) {
+    display: none !important;
+  }
+  
+  /* Hide sidebar and navigation within app */
+  .bg-slate-50 > :not(.print-content):not([class*="print"]) {
+    display: none !important;
+  }
+  
+  /* Show and style the print content */
+  .print-content {
+    display: block !important;
+    position: relative !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: white !important;
+  }
+  
+  /* Ensure math renders with high quality */
+  .math-content, .math-content * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    color: #000 !important;
+  }
+  
+  /* Clean styling for print */
+  .print-content * {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #000 !important;
+  }
+  
+  /* Typography for print */
+  .print-content h1, .print-content h2, .print-content h3 {
+    color: #000 !important;
+    margin-bottom: 8px !important;
+    font-weight: bold !important;
+  }
+  
+  /* Make sure content is visible */
+  body {
+    background: white !important;
+    color: #000 !important;
+  }
+  
+  /* Force visibility of math content */
+  .print-content, .print-content * {
+    visibility: visible !important;
+    display: block !important;
+  }
+  
+  .print-content span, .print-content p {
+    display: inline !important;
+  }
+}

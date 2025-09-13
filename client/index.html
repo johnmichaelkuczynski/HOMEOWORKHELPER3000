@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>Perfect Homework Assistant</title>
+    <meta name="description" content="AI-powered homework assistance with perfect math notation rendering and direct LLM integration for solving assignments with OCR support.">
+    
+    <!-- Preconnect to external services -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://polyfill.io">
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- MathJax Configuration -->
+    <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      options: {
+        processHtmlClass: 'math-content'
+      }
+    };
+    </script>
+    
+    <!-- MathJax Library -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- Print Styles for Perfect Math Preservation -->
+    <style media="print">
+      @page {
+        margin: 0.75in;
+        size: letter;
+      }
+      
+      /* Hide UI elements but keep solution content */
+      header, nav, .no-print {
+        display: none !important;
+      }
+      
+      /* Hide most buttons but show print buttons */
+      button {
+        display: none !important;
+      }
+      
+      button[title*="Download"] {
+        display: none !important;
+      }
+      
+      /* Ensure body and content are visible */
+      body {
+        background: white !important;
+        color: black !important;
+        font-family: 'Times New Roman', serif !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        display: block !important;
+        visibility: visible !important;
+      }
+      
+      /* Show only the math content */
+      .math-content {
+        display: block !important;
+        visibility: visible !important;
+        background: white !important;
+        color: black !important;
+        page-break-inside: avoid;
+        padding: 20px !important;
+        margin: 0 !important;
+      }
+      
+      /* Show solution card content */
+      .math-content {
+        display: block !important;
+        visibility: visible !important;
+        font-size: 14pt !important;
+        line-height: 1.6 !important;
+        color: black !important;
+        font-family: 'Computer Modern', 'Times New Roman', serif !important;
+        background: white !important;
+        page-break-inside: avoid;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      
+      /* Math elements */
+      .math-content *,
+      .math-content .MathJax,
+      .math-content mjx-container {
+        color: black !important;
+        background: white !important;
+        font-size: inherit !important;
+        display: inline !important;
+        visibility: visible !important;
+      }
+      
+      .math-content .MathJax_Display {
+        display: block !important;
+        margin: 1em 0 !important;
+        text-align: center !important;
+      }
+      
+      /* Text formatting */
+      .math-content h1, .math-content h2, .math-content h3 {
+        display: block !important;
+        color: black !important;
+        page-break-after: avoid;
+        font-weight: bold !important;
+        margin: 0.5em 0 !important;
+      }
+      
+      .math-content h1 { font-size: 18pt !important; }
+      .math-content h2 { font-size: 16pt !important; }
+      .math-content h3 { font-size: 14pt !important; }
+      
+      .math-content p {
+        display: block !important;
+        color: black !important;
+        margin-bottom: 0.75em !important;
+        page-break-inside: avoid;
+      }
+      
+      .math-content strong {
+        font-weight: bold !important;
+        color: black !important;
+      }
+      
+      .math-content br {
+        display: block !important;
+        margin: 0.5em 0 !important;
+        content: "";
+      }
+      
+      /* Hide everything else during print */
+      .bg-slate-50:not(.math-content),
+      .border:not(.math-content *),
+      .shadow-sm,
+      .p-6:not(.math-content),
+      .space-y-6:not(.math-content) {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
+    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
+  </body>
+</html>

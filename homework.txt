@@ -1,0 +1,3 @@
+Sample math problem: Solve 2x + 5 = 15 for x
+Step 1: Subtract 5 from both sides
+Step 2: Divide by 2
