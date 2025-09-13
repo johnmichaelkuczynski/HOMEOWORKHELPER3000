@@ -40,6 +40,10 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
               
               if (statusData.status === 'completed') {
                 setIsProcessing(false);
+                // Close the popup window
+                if (checkoutWindow && !checkoutWindow.closed) {
+                  checkoutWindow.close();
+                }
                 toast({
                   title: "Payment successful!",
                   description: `${tokens.toLocaleString()} tokens have been added to your account`,
@@ -49,9 +53,25 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
                 return;
               } else if (statusData.status === 'failed') {
                 setIsProcessing(false);
+                // Close the popup window
+                if (checkoutWindow && !checkoutWindow.closed) {
+                  checkoutWindow.close();
+                }
                 toast({
                   title: "Payment failed",
                   description: "Your payment was not completed. Please try again.",
+                  variant: "destructive",
+                });
+                onError?.();
+                return;
+              }
+              
+              // Check if window was closed manually by user
+              if (checkoutWindow.closed) {
+                setIsProcessing(false);
+                toast({
+                  title: "Payment cancelled",
+                  description: "The payment window was closed.",
                   variant: "destructive",
                 });
                 onError?.();
