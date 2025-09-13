@@ -63,8 +63,13 @@ const deepseek = new OpenAI({
 });
 
 // Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_dummy_key', {
-  apiVersion: '2025-06-30.basil'
+// Validate Stripe secret key at startup
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY environment variable is required');
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2024-06-20'
 });
 
 // DeepSeek processing function
@@ -2170,8 +2175,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           },
         ],
         mode: 'payment',
-        success_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=success`,
-        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=cancelled`,
+        success_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=success`,
+        cancel_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=cancelled`,
         client_reference_id: req.session.userId.toString(),
         metadata: {
           userId: req.session.userId.toString(),
@@ -2210,37 +2215,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { sessionId } = req.params;
+      console.log(`[STRIPE DEBUG] Checking payment status for session: ${sessionId}`);
       
       // Retrieve the session from Stripe
       const session = await stripe.checkout.sessions.retrieve(sessionId);
+      console.log(`[STRIPE DEBUG] Session details:`, {
+        id: session.id,
+        status: session.status,
+        payment_status: session.payment_status,
+        payment_intent: session.payment_intent,
+        mode: session.mode,
+        amount_total: session.amount_total,
+        currency: session.currency,
+        metadata: session.metadata
+      });
       
       if (session.payment_status === 'paid' && session.status === 'complete') {
+        console.log(`[STRIPE DEBUG] Payment successful, crediting tokens for session: ${sessionId}`);
+        
         // Payment completed - check if tokens already credited
         const existingPayment = await storage.getStripePaymentBySessionId(sessionId);
+        console.log(`[STRIPE DEBUG] Existing payment record:`, existingPayment);
         
         if (existingPayment && existingPayment.status !== 'completed') {
           // Credit the tokens
           const tokens = parseInt(session.metadata?.tokens || '0');
           const userId = parseInt(session.metadata?.userId || '0');
+          console.log(`[STRIPE DEBUG] Crediting ${tokens} tokens to user ${userId}`);
           
           if (tokens > 0 && userId === req.session.userId) {
             // Update user's token balance
             const user = await authService.getUserById(userId);
             if (user) {
-              await storage.updateUserTokenBalance(userId, (user.tokenBalance || 0) + tokens);
+              const newBalance = (user.tokenBalance || 0) + tokens;
+              await storage.updateUserTokenBalance(userId, newBalance);
               await storage.updateStripePaymentStatus(sessionId, 'completed');
+              console.log(`[STRIPE DEBUG] Updated user ${userId} balance to ${newBalance} tokens`);
+            } else {
+              console.error(`[STRIPE DEBUG] User ${userId} not found when crediting tokens`);
             }
+          } else {
+            console.error(`[STRIPE DEBUG] Invalid token credit parameters: tokens=${tokens}, userId=${userId}, sessionUserId=${req.session.userId}`);
           }
+        } else {
+          console.log(`[STRIPE DEBUG] Tokens already credited for session: ${sessionId}`);
         }
         
         res.json({ status: 'completed' });
       } else if (session.status === 'expired') {
+        console.log(`[STRIPE DEBUG] Session expired: ${sessionId}`);
         res.json({ status: 'failed' });
-      } else {
+      } else if (session.status === 'open' && session.payment_status === 'unpaid') {
+        console.log(`[STRIPE DEBUG] Session still open and unpaid: ${sessionId}`);
         res.json({ status: 'pending' });
+      } else {
+        console.log(`[STRIPE DEBUG] Session in unexpected state - status: ${session.status}, payment_status: ${session.payment_status}`);
+        // Check if payment failed
+        if (session.payment_status === 'no_payment_required' || session.payment_status === 'unpaid') {
+          console.log(`[STRIPE DEBUG] Payment not completed or failed for session: ${sessionId}`);
+          res.json({ status: 'failed' });
+        } else {
+          res.json({ status: 'pending' });
+        }
       }
     } catch (error) {
-      console.error('Payment status check error:', error);
+      console.error(`[STRIPE DEBUG] Payment status check error for session ${req.params.sessionId}:`, error);
+      // Check if it's a Stripe API error
+      if (error && typeof error === 'object' && 'type' in error) {
+        console.error(`[STRIPE DEBUG] Stripe error type: ${error.type}, code: ${error.code}, message: ${error.message}`);
+      }
       res.status(500).json({ error: 'Failed to check payment status' });
     }
   });
