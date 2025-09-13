@@ -34,6 +34,7 @@ export interface IStorage {
   createStripePayment(payment: InsertStripePayment): Promise<StripePayment>;
   getStripePaymentBySessionId(sessionId: string): Promise<StripePayment | undefined>;
   updateStripePaymentStatus(sessionId: string, status: string): Promise<void>;
+  completeStripePaymentAndCredit(sessionId: string, userId: number, tokens: number): Promise<{ alreadyCompleted: boolean; newBalance?: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -225,6 +226,97 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(stripePayments.stripeSessionId, sessionId));
   }
+  
+  async completeStripePaymentAndCredit(sessionId: string, userId: number, tokens: number): Promise<{ alreadyCompleted: boolean; newBalance?: number }> {
+    // Use a transaction with proper concurrency control
+    return await db.transaction(async (tx) => {
+      let paymentId: number | null = null;
+      let updatedRows = 0;
+      
+      // First, try to atomically claim the payment by updating status from non-completed to completed
+      const existingPayments = await tx
+        .select()
+        .from(stripePayments)
+        .where(eq(stripePayments.stripeSessionId, sessionId));
+      
+      if (existingPayments.length > 0) {
+        const existingPayment = existingPayments[0];
+        
+        if (existingPayment.status === 'completed') {
+          // Already completed - safe to return early
+          return { alreadyCompleted: true };
+        }
+        
+        // Conditionally update to completed ONLY if current status is not completed
+        const result = await tx
+          .update(stripePayments)
+          .set({ 
+            status: 'completed',
+            updatedAt: new Date(),
+            completedAt: new Date()
+          })
+          .where(and(
+            eq(stripePayments.stripeSessionId, sessionId),
+            eq(stripePayments.status, existingPayment.status) // Only update if status hasn't changed
+          ))
+          .returning({ id: stripePayments.id });
+        
+        updatedRows = result.length;
+        if (updatedRows > 0) {
+          paymentId = result[0].id;
+        }
+      } else {
+        // No existing payment - try to insert as completed with conflict handling
+        try {
+          const result = await tx
+            .insert(stripePayments)
+            .values({
+              userId,
+              stripeSessionId: sessionId,
+              amount: 30, // Default amount
+              tokens,
+              status: 'completed',
+              completedAt: new Date(),
+              metadata: { webhookCreated: true }
+            })
+            .returning({ id: stripePayments.id });
+          
+          paymentId = result[0].id;
+          updatedRows = 1;
+        } catch (error) {
+          // If unique constraint violation, another webhook won the race
+          if (error.message?.includes('unique') || error.code === '23505') {
+            return { alreadyCompleted: true };
+          }
+          throw error;
+        }
+      }
+      
+      // Only credit tokens if we successfully claimed the payment (updated or inserted)
+      if (updatedRows === 0) {
+        return { alreadyCompleted: true };
+      }
+      
+      // Get current user balance and credit tokens
+      const [user] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, userId));
+      
+      if (!user) {
+        throw new Error(`User ${userId} not found`);
+      }
+      
+      const newBalance = (user.tokenBalance || 0) + tokens;
+      
+      await tx
+        .update(users)
+        .set({ tokenBalance: newBalance })
+        .where(eq(users.id, userId));
+      
+      return { alreadyCompleted: false, newBalance };
+    });
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -353,6 +445,10 @@ export class MemStorage implements IStorage {
 
   async updateStripePaymentStatus(sessionId: string, status: string): Promise<void> {
     // No-op for MemStorage
+  }
+  
+  async completeStripePaymentAndCredit(sessionId: string, userId: number, tokens: number): Promise<{ alreadyCompleted: boolean; newBalance?: number }> {
+    throw new Error("Stripe payments not supported in MemStorage");
   }
 }
 

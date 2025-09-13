@@ -1914,6 +1914,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // Production diagnostics route (no secrets leaked)
+  app.get("/__diag/payments", async (req, res) => {
+    try {
+      const liveKey = (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_live_");
+      const whSet   = !!process.env.STRIPE_WEBHOOK_SECRET;
+      const priceId = process.env.PRICE_ID_30K || process.env.PRICE_ID || "";
+      let priceInfo = null;
+      if (priceId) {
+        priceInfo = await stripe.prices.retrieve(priceId);
+      }
+      res.json({
+        liveKey, 
+        webhookSecretSet: whSet,
+        priceConfigured: !!priceId,
+        priceActive: !!(priceInfo && priceInfo.active),
+        priceLiveMode: !!(priceInfo && priceInfo.livemode)
+      });
+    } catch (e) {
+      res.status(500).json({ diagError: e.message || String(e) });
+    }
+  });
+
   // Auth routes
   app.post('/api/register', async (req, res) => {
     try {
@@ -2152,15 +2174,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Stripe payment endpoints
   app.post('/api/create-checkout-session', async (req, res) => {
     try {
-      if (!req.session.userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+      // Production-safe user ID validation - ONLY use session, never trust headers
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(400).json({ error: "NO_USER_ID" });
       }
+      
+      // Production-safe origin determination 
+      const origin = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || process.env.FRONTEND_URL || `https://${req.headers.host}`;
       
       const { amount } = purchaseCreditsSchema.parse(req.body);
       const tokens = TOKEN_LIMITS.CREDIT_TIERS[amount];
       
+      // Enhanced error logging for production
+      console.log(`[STRIPE CHECKOUT] Creating session for user ${userId}, tokens: ${tokens}, amount: $${amount}`);
+      
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ['card'],
+        mode: "payment",
+        client_reference_id: String(userId),
+        metadata: { 
+          user_id: String(userId), 
+          tokens: String(tokens),
+          amount: String(amount)
+        },
         line_items: [
           {
             price_data: {
@@ -2174,36 +2210,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
             quantity: 1,
           },
         ],
-        mode: 'payment',
-        success_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${process.env.BASE_URL || process.env.FRONTEND_URL || 'http://localhost:5000'}/?payment=cancelled&session_id={CHECKOUT_SESSION_ID}`,
-        client_reference_id: req.session.userId.toString(),
-        metadata: {
-          userId: req.session.userId.toString(),
-          tokens: tokens.toString()
-        }
+        success_url: `${origin}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/?payment=cancelled&session_id={CHECKOUT_SESSION_ID}`,
       });
       
-      // Create payment record in database
-      await storage.createStripePayment({
-        userId: req.session.userId,
-        stripeSessionId: session.id,
-        amount: parseInt(amount),
-        tokens: tokens,
-        status: 'pending',
-        metadata: { 
-          amount: amount,
-          sessionUrl: session.url 
-        }
-      });
+      // Create payment record in database with better error handling
+      try {
+        await storage.createStripePayment({
+          userId: parseInt(String(userId)),
+          stripeSessionId: session.id,
+          amount: parseInt(amount),
+          tokens: tokens,
+          status: 'pending',
+          metadata: { 
+            amount: amount,
+            sessionUrl: session.url,
+            origin: origin
+          }
+        });
+        console.log(`[STRIPE CHECKOUT] Created payment record for session ${session.id}`);
+      } catch (dbError) {
+        console.error('[STRIPE CHECKOUT] Database error creating payment record:', dbError);
+        // Continue anyway - webhook can handle crediting if needed
+      }
       
       res.json({ 
         sessionId: session.id,
         url: session.url 
       });
     } catch (error) {
-      console.error('Stripe session creation error:', error);
-      res.status(500).json({ error: 'Failed to create payment session' });
+      console.error('[STRIPE CHECKOUT] Session creation failed:', error);
+      if (error && typeof error === 'object' && 'type' in error) {
+        console.error(`[STRIPE CHECKOUT] Stripe error - type: ${error.type}, code: ${error.code}, message: ${error.message}`);
+      }
+      res.status(500).json({ error: "CREATE_SESSION_FAILED" });
     }
   });
 
@@ -2282,40 +2322,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`[STRIPE DEBUG] Stripe error type: ${error.type}, code: ${error.code}, message: ${error.message}`);
       }
       res.status(500).json({ error: 'Failed to check payment status' });
-    }
-  });
-
-  app.post('/api/webhook/stripe', async (req, res) => {
-    try {
-      if (!process.env.STRIPE_WEBHOOK_SECRET) {
-        console.error('[STRIPE WEBHOOK] STRIPE_WEBHOOK_SECRET environment variable is required');
-        return res.status(500).json({ error: 'Webhook not configured' });
-      }
-      
-      const sig = req.headers['stripe-signature'];
-      // Note: This expects raw body, not JSON parsed. Make sure Express is configured correctly for webhooks.
-      const event = stripe.webhooks.constructEvent(
-        req.body,
-        sig as string,
-        process.env.STRIPE_WEBHOOK_SECRET
-      );
-      
-      if (event.type === 'checkout.session.completed') {
-        const session = event.data.object as any;
-        const userId = parseInt(session.metadata.userId);
-        const tokens = parseInt(session.metadata.tokens);
-        
-        // Update user's token balance
-        const user = await authService.getUserById(userId);
-        if (user) {
-          await storage.updateUserTokenBalance(userId, (user.tokenBalance || 0) + tokens);
-        }
-      }
-      
-      res.json({ received: true });
-    } catch (error) {
-      console.error('Stripe webhook error:', error);
-      res.status(400).json({ error: 'Webhook failed' });
     }
   });
 
