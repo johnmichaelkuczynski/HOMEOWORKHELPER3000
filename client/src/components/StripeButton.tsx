@@ -19,7 +19,7 @@ export default function StripeButton({ amount, tokens, onSuccess, onError }: Str
 
   const createCheckoutSession = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/stripe/create-checkout-session`, {
+      const response = await apiRequest("POST", `/api/create-checkout-session`, {
         amount: parseFloat(amount),
       });
       return await response.json();
