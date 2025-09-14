@@ -4,8 +4,8 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
-// IMPORTANT: Webhook route must be BEFORE express.json() to get raw body
-// Quick reachability test (Render) - GET probe to confirm path exists
+// Add reachability probes for Render diagnostics
+app.get("/__ping", (_req, res) => res.send("ok"));
 app.get("/api/webhooks/stripe", (_req, res) => res.status(405).send("POST only"));
 
 app.post("/api/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
@@ -20,13 +20,13 @@ app.post("/api/webhooks/stripe", express.raw({ type: "application/json" }), asyn
     
     // Import Stripe properly for ESM
     const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
       apiVersion: '2024-06-20'
     });
     
-    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(req.body, sig as string, process.env.STRIPE_WEBHOOK_SECRET!);
     console.log(`[STRIPE WEBHOOK] Verified event: ${event.type} for ${event.id}`);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[STRIPE WEBHOOK] Signature verification failed:", err.message);
     return res.status(400).send("Bad signature");
   }
@@ -159,6 +159,17 @@ app.post("/api/webhooks/stripe", express.raw({ type: "application/json" }), asyn
   }
   
   return res.sendStatus(200);
+});
+
+// Minimal diagnostics route (no secrets exposed)
+app.get("/__diag/pay", async (req, res) => {
+  try {
+    const liveKey = (process.env.STRIPE_SECRET_KEY || "").startsWith("sk_live_");
+    const wh = !!process.env.STRIPE_WEBHOOK_SECRET;
+    res.json({ liveKey, webhookSecretSet: wh, base: process.env.PUBLIC_BASE_URL || null });
+  } catch(e: any) { 
+    res.status(500).json({error: e.message}); 
+  }
 });
 
 // Now safe to add JSON parsing for other routes
