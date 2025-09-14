@@ -10,6 +10,64 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
+const INFERENTIAL_KNOWLEDGE_SAMPLE = `Inferential knowledge and logical dependence Two kinds of knowledge: direct and indirect
+Some knowledge is direct; some is indirect.
+Indirect knowledge is knowledge that is acquired through inference.
+To make an inference is to form a new belief on the basis of an old one.
+Inferences, when legitimate, are made in accordance with legitimate rules of inference. Rules of inference, when legitimate, correspond to dependence-relations.
+
+Two kinds of dependence-relations: causal and logical
+
+There are two kinds of dependence-relations: logical and causal.
+  Logical dependence-relations hold among propositions. A proposition is a truth or a falsehood.
+  Example of a logical dependence-relation: The proposition that x is a triangle cannot be true unless the proposition that x has three sides is true. Therefore, x s being a triangle depends on x s having three sides.
+  Causal relations hold among states of affairs, not truths and falsehoods. (A state of affairs is anything that is in space-time.)
+Example of a causal dependence-relation: Smith cannot pass the class unless Smith studies.
+Therefore, Smith s passing depends on his studying.
+The first-dependence relation is interpropositional, i.e. it holds between propositions.
+  The second is objectual, i.e. it holds between occupants of the space-time manifold and therefore between  objects,  relative to some delineation of that term.
+
+Propositions the objects of belief
+   The objects of knowledge are propositions. It isn't known unless it's believed and it isn't believed unless it's a proposition.
+   One can be aware of non-propositions, e.g. rocks, trees, people, but one does not in the relevant sense know them. Rather, one knows truths about them.
+
+Relations of logical dependence not known through observation
+   Some dependence-relations are known, not through sensory observation, but through conceptual analysis. Such truths are analytic, as opposed to empirical. Examples of analytic truths are:
+
+1. If P, then either P or Q.
+
+2. There are infinitely many primes.
+
+3. Nothing can be numerate or literate without being sentient.
+
+4. There are no laws where there is no government.
+
+5. There is no recursive definition of the class of Dedekind-cuts.
+
+6. 1+1=2.
+
+7. 1+1?3.
+
+
+  1 obviously expresses a dependence-relation, and 2-7 non-obviously do so, as their meanings are:
+
+
+  2*. A set s having finitely many members depends on its not having the set of prime numbers as a subset.
+
+3*. An entity s being literate or numerate depends on its being sentient. 4*. The presence of law depends on the presence of government.
+  5*. A set s having either finitely many or denumerably many members depends on its not having a cardinality equal to or greater than the cardinality of the class of Dedekind cuts.
+
+6*. A set s being a couple depends on its being the union of two non-overlapping unit sets. 7*. A set s being a triple depends on its not being the union of two non-overlapping unit sets.
+
+Analytic truth and analytic knowledge
+
+Analytic knowledge is always knowledge of dependence-relations.
+Empirical knowledge can be either direct or indirect; the same is true of analytic knowledge.
+
+Knowledge vs. awareness
+   Knowledge is conceptually articulated awareness. In order for me to know that my shoes are uncomfortably tight, I need to have the concepts shoe, tight, discomfort, etc. I do not need to have these concepts---or, arguably, any concepts---to be aware of the uncomfortable tightness in my shoes. My knowledge of that truth is a conceptualization of my awareness of that state of affairs.
+  Equivalently, there are two kinds of awareness: propositional and objectual. My visual perception of the dog in front of me is a case of objectual awareness, as is my awareness of the tightness of my shoes. My knowledge that there is a dog in front of me is a case of proposition- awareness, as is my knowledge that my shoes are uncomfortably tight.`;
+
 const DEFAULT_STYLE_SAMPLE = `There are two broad types of relationships: formal and functional. Formal relationships hold between descriptions. A description is any statement that can be true or false. Example of a formal relationship: The description that a shape is a square cannot be true unless the description that it has four equal sides is true. Therefore, a shape's being a square depends on its having four equal sides. Functional relationships hold between events or conditions. (An event is anything that happens in time.) Example of a functional relationship: A plant cannot grow without water. Therefore, a plant's growth depends on its receiving water. The first type is structural, i.e., it holds between statements about features. The second is operational, i.e., it holds between things in the world as they act or change. Descriptions as objects of consideration. The objects of evaluation are descriptions. Something is not evaluated unless it is described, and it is not described unless it can be stated. One can notice non-descriptions — sounds, objects, movements — but in the relevant sense one evaluates descriptions of them. Relationships not known through direct observation. Some relationships are known, not through direct observation, but through reasoning. Such relationships are structural, as opposed to observational. Examples of structural relationships are: If A, then A or B. All tools require some form of use. Nothing can be both moving and perfectly still. There are no rules without conditions. 1 obviously expresses a relationship; 2–4 do so less obviously, as their meanings are: 2*. A tool's being functional depends on its being usable. 3*. An object's being both moving and still depends on contradictory conditions, which cannot occur together. 4*. The existence of rules depends on the existence of conditions to which they apply. Structural truth and structural understanding. Structural understanding is always understanding of relationships. Observational understanding can be either direct or indirect; the same is true of structural understanding.`;
 
 const HUME_INDUCTION_SAMPLE = `HUME, INDUCTION, AND THE LOGIC OF EXPLANATION 
@@ -36,6 +94,8 @@ const MILLET_PARADOX_SAMPLE = `The Paradox of the Grain of Millet: If a single g
 
 const getSampleText = (sampleId: string): string => {
   switch (sampleId) {
+    case 'inferential-knowledge':
+      return INFERENTIAL_KNOWLEDGE_SAMPLE;
     case 'formal-functional':
       return DEFAULT_STYLE_SAMPLE;
     case 'hume-induction':
@@ -111,6 +171,7 @@ const STYLE_PRESETS = [
 ];
 
 const WRITING_SAMPLES = [
+  { id: "inferential-knowledge", name: "INFERENTIAL KNOWLEDGE AND LOGICAL DEPENDENCE", category: "Content-Neutral" },
   { id: "formal-functional", name: "FORMAL AND FUNCTIONAL RELATIONSHIPS", category: "Content-Neutral" },
   { id: "explanatory-efficiency", name: "ALTERNATIVE ACCOUNT OF EXPLANATORY EFFICIENCY", category: "Content-Neutral" },
   { id: "rational-belief", name: "RATIONAL BELIEF AND UNDERLYING STRUCTURE", category: "Epistemology" },
