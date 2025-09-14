@@ -94,16 +94,12 @@ function buildPresetBlock(selectedPresets?: string[], customInstructions?: strin
   return `Apply ONLY these additional rewrite instructions (no other goals):\n${lines.join("\n")}\n\n`;
 }
 
-function buildRewritePrompt(params: {
-  inputText: string;
-  styleText?: string;
-  contentMixText?: string;
-  selectedPresets?: string[];
-  customInstructions?: string;
-}): string {
-  const hasStyle = !!(params.styleText && params.styleText.trim() !== "");
-  const hasContent = !!(params.contentMixText && params.contentMixText.trim() !== "");
-  const styleSample = hasStyle ? params.styleText! : `DEFAULT STYLE SAMPLE (The Raven Paradox):
+// Style samples collection - new samples added at top
+const STYLE_SAMPLES = {
+  // NEW SAMPLES WILL BE ADDED HERE
+
+  // Default formal academic sample
+  "formal_academic": `DEFAULT STYLE SAMPLE (The Raven Paradox):
 
 Presumably, logically equivalent statements are confirmationally equivalent. In other words, if two statements entail each other, then anything that one confirms the one statement to a given degree also confirms the other statement to that degree. But this actually seems false when consider statement-pairs such as: 
 
@@ -113,7 +109,21 @@ and
 
 which, though logically equivalent, seem to confirmationally equivalent, in that a non-black non-raven confirms (ii) to a high degree but confirms (i) to no degree or at most to a low degree. 
 A number of very contrived solutions to this paradox have been proposed, all of which either deny that there is a paradox or invent ad hoc systems of logic to validate the 'solution' in question. 
-But the real solution is clear. First of all, it is only principled generalizations that can be confirmed. Supposing that you assert (i) with the intention of affirming a principled as opposed to an accidental generalization, you are saying that instances of the property of being a raven grounds or causes instances of blackness. Read thus, (i) is most certainly not equivalent with (ii) or with any variation thereof. Be it noted that while there is a natural nomic or causal reading of (i), there is no such reading of (ii). Finally, the reason that we are not inclined to regard a non-black non-raven — say, a white shoe — as confirming "All ravens are black" is that we would never have adduced "All ravens are black" in the first place were we interested in making a point about white shoes, and so such white shoes are not, from the relevant point of view, supportive instances. A helpful analogy: "All books by Tom Clancy are popular" is confirmed by examples of popular Tom Clancy novels, but not by popular Stephen King novels, although "All books by Tom Clancy are popular" and "All books by people other than Tom Clancy that are not popular are books by people other than Tom Clancy" are logically equivalent.`;
+But the real solution is clear. First of all, it is only principled generalizations that can be confirmed. Supposing that you assert (i) with the intention of affirming a principled as opposed to an accidental generalization, you are saying that instances of the property of being a raven grounds or causes instances of blackness. Read thus, (i) is most certainly not equivalent with (ii) or with any variation thereof. Be it noted that while there is a natural nomic or causal reading of (i), there is no such reading of (ii). Finally, the reason that we are not inclined to regard a non-black non-raven — say, a white shoe — as confirming "All ravens are black" is that we would never have adduced "All ravens are black" in the first place were we interested in making a point about white shoes, and so such white shoes are not, from the relevant point of view, supportive instances. A helpful analogy: "All books by Tom Clancy are popular" is confirmed by examples of popular Tom Clancy novels, but not by popular Stephen King novels, although "All books by Tom Clancy are popular" and "All books by people other than Tom Clancy that are not popular are books by people other than Tom Clancy" are logically equivalent.`
+};
+
+function buildRewritePrompt(params: {
+  inputText: string;
+  styleText?: string;
+  contentMixText?: string;
+  selectedPresets?: string[];
+  customInstructions?: string;
+}): string {
+  const hasStyle = !!(params.styleText && params.styleText.trim() !== "");
+  const hasContent = !!(params.contentMixText && params.contentMixText.trim() !== "");
+  
+  // Use provided styleText, or fall back to first available style sample
+  const styleSample = hasStyle ? params.styleText! : Object.values(STYLE_SAMPLES)[0];
 
   let prompt = `Your task is to rewrite the input text using the exact writing style demonstrated in the style sample below.
 
