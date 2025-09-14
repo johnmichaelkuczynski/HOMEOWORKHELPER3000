@@ -28,43 +28,122 @@ app.post("/api/webhook/stripe", express.raw({ type: "application/json" }), async
     return res.status(400).send("Bad signature");
   }
 
-  // Handle the event with resilient, idempotent crediting
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    console.log(`[STRIPE WEBHOOK] Processing checkout.session.completed for session ${session.id}`);
+  // Render-specific event idempotency check using event ID in payment metadata
+  const { storage } = await import('./storage');
+  const eventIdKey = `event_${event.id}`;
+  
+  // Check if this event was already processed by looking for it in any payment metadata
+  try {
+    const existingPayments = await storage.getAllStripePayments?.() || [];
+    const alreadyProcessed = existingPayments.some(payment => 
+      payment.metadata && typeof payment.metadata === 'object' && 
+      (payment.metadata as any)[eventIdKey] === true
+    );
+    
+    if (alreadyProcessed) {
+      console.log(`[STRIPE WEBHOOK] Event ${event.id} already processed - skipping`);
+      return res.status(200).json({ received: true });
+    }
+  } catch (error) {
+    console.log(`[STRIPE WEBHOOK] Could not check event idempotency, proceeding: ${error.message}`);
+  }
+
+  // Handle checkout.session.completed and payment_intent.succeeded events
+  if (event.type === 'checkout.session.completed' || event.type === 'payment_intent.succeeded') {
+    console.log(`[STRIPE WEBHOOK] Processing ${event.type} for event ${event.id}`);
     
     try {
-      // Use consistent metadata keys - prefer user_id, fallback to client_reference_id
-      const userId = parseInt(session.metadata?.user_id || session.client_reference_id || '0');
-      const tokens = parseInt(session.metadata?.tokens || '0');
+      let userId: number = 0;
+      let tokens: number = 0;
+      let sessionId: string = '';
+      
+      if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        sessionId = session.id;
+        
+        // Get user ID from metadata or client reference
+        userId = parseInt(session.metadata?.user_id || session.client_reference_id || '0');
+        
+        // RENDER FIX: Fetch line items to get price metadata for credits
+        const Stripe = (await import('stripe')).default;
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+          apiVersion: '2024-06-20'
+        });
+        
+        try {
+          const lineItems = await stripe.checkout.sessions.listLineItems(session.id, { expand: ['data.price'] });
+          
+          if (lineItems.data.length > 0) {
+            const lineItem = lineItems.data[0];
+            const price = lineItem.price;
+            
+            // Get credits from price metadata (for live prices)
+            if (price && price.metadata && price.metadata.credits) {
+              tokens = parseInt(price.metadata.credits);
+              console.log(`[STRIPE WEBHOOK] Got ${tokens} tokens from price metadata for price ${price.id}`);
+            } else {
+              // Fallback to session metadata for backwards compatibility
+              tokens = parseInt(session.metadata?.tokens || '0');
+              console.log(`[STRIPE WEBHOOK] Using fallback tokens from session metadata: ${tokens}`);
+            }
+          }
+        } catch (lineItemError) {
+          console.error(`[STRIPE WEBHOOK] Error fetching line items: ${lineItemError.message}`);
+          // Fallback to session metadata
+          tokens = parseInt(session.metadata?.tokens || '0');
+        }
+        
+      } else if (event.type === 'payment_intent.succeeded') {
+        const paymentIntent = event.data.object;
+        
+        // Get user ID from payment intent metadata
+        userId = parseInt(paymentIntent.metadata?.user_id || '0');
+        tokens = parseInt(paymentIntent.metadata?.tokens || '0');
+        sessionId = paymentIntent.metadata?.session_id || paymentIntent.id;
+      }
       
       if (userId <= 0 || tokens <= 0) {
-        console.error(`[STRIPE WEBHOOK] Invalid parameters: userId=${userId}, tokens=${tokens} for session ${session.id}`);
+        console.error(`[STRIPE WEBHOOK] Invalid parameters: userId=${userId}, tokens=${tokens} for event ${event.id}`);
         return res.status(200).json({ received: true }); // Invalid data - don't retry
       }
       
-      // Import after app is defined to avoid circular dependency
-      const { storage } = await import('./storage');
-      
       // Use atomic operation to check completion, credit tokens, and mark completed
-      const result = await storage.completeStripePaymentAndCredit(session.id, userId, tokens);
+      const result = await storage.completeStripePaymentAndCredit(sessionId, userId, tokens);
       
       if (result.alreadyCompleted) {
-        console.log(`[STRIPE WEBHOOK] Payment ${session.id} already completed - no action needed`);
+        console.log(`[STRIPE WEBHOOK] Payment ${sessionId} already completed - no action needed`);
         return res.status(200).json({ received: true });
       }
       
-      console.log(`[STRIPE WEBHOOK] SUCCESS: Credited ${tokens} tokens to user ${userId}, new balance: ${result.newBalance}`);
+      // Mark this event as processed in the payment metadata
+      try {
+        const payment = await storage.getStripePaymentBySessionId(sessionId);
+        if (payment) {
+          const updatedMetadata = {
+            ...(payment.metadata as any || {}),
+            [eventIdKey]: true,
+            lastProcessedEvent: event.id,
+            lastProcessedAt: new Date().toISOString()
+          };
+          await storage.updateStripePaymentMetadata?.(sessionId, updatedMetadata);
+        }
+      } catch (metadataError) {
+        console.log(`[STRIPE WEBHOOK] Could not update event metadata: ${metadataError.message}`);
+      }
+      
+      console.log(`[STRIPE WEBHOOK] SUCCESS: Credited ${tokens} tokens to user ${userId}, new balance: ${result.newBalance} for event ${event.id}`);
       return res.status(200).json({ received: true });
       
     } catch (error) {
-      console.error(`[STRIPE WEBHOOK] Error processing payment for session ${session.id}:`, error);
+      console.error(`[STRIPE WEBHOOK] Error processing ${event.type} for event ${event.id}:`, error);
       
-      // Differentiate between transient and permanent errors
+      // Differentiate between transient and permanent errors for Render
       if (error.message?.includes('connection') || 
           error.message?.includes('timeout') ||
           error.message?.includes('ECONNREFUSED') ||
-          error.code === 'ENETUNREACH') {
+          error.code === 'ENETUNREACH' ||
+          error.message?.includes('database') ||
+          error.message?.includes('pool')) {
         console.error(`[STRIPE WEBHOOK] Transient error - returning 500 for Stripe retry`);
         return res.status(500).json({ error: 'Temporary error, please retry' });
       } else {

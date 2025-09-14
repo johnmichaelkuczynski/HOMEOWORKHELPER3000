@@ -207,14 +207,30 @@ export const stripePayments = pgTable("stripe_payments", {
   completedAt: timestamp("completed_at"),
 });
 
+// Stripe events table for idempotency tracking
+export const stripeEvents = pgTable("stripe_events", {
+  eventId: text("event_id").primaryKey(), // Stripe event ID
+  eventType: text("event_type").notNull(),
+  processed: boolean("processed").notNull().default(false),
+  sessionId: text("session_id"), // Optional reference to session
+  paymentIntentId: text("payment_intent_id"), // Optional reference to payment intent
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 export const insertStripePaymentSchema = createInsertSchema(stripePayments).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
+export const insertStripeEventSchema = createInsertSchema(stripeEvents).omit({
+  createdAt: true,
+});
+
 export type StripePayment = typeof stripePayments.$inferSelect;
 export type InsertStripePayment = z.infer<typeof insertStripePaymentSchema>;
+export type StripeEvent = typeof stripeEvents.$inferSelect;
+export type InsertStripeEvent = z.infer<typeof insertStripeEventSchema>;
 
 // Payment schemas
 export const purchaseCreditsSchema = z.object({

@@ -1,4 +1,4 @@
-import { assignments, users, tokenUsage, dailyUsage, documents, rewriteJobs, stripePayments, type Assignment, type InsertAssignment, type User, type InsertUser, type TokenUsage, type InsertTokenUsage, type DailyUsage, type InsertDailyUsage, type Document, type InsertDocument, type RewriteJob, type InsertRewriteJob, type StripePayment, type InsertStripePayment } from "@shared/schema";
+import { assignments, users, tokenUsage, dailyUsage, documents, rewriteJobs, stripePayments, stripeEvents, type Assignment, type InsertAssignment, type User, type InsertUser, type TokenUsage, type InsertTokenUsage, type DailyUsage, type InsertDailyUsage, type Document, type InsertDocument, type RewriteJob, type InsertRewriteJob, type StripePayment, type InsertStripePayment, type StripeEvent, type InsertStripeEvent } from "@shared/schema";
 import { db } from "./db";
 import { eq, isNull, and, sum } from "drizzle-orm";
 
@@ -33,8 +33,14 @@ export interface IStorage {
   // Stripe payment methods
   createStripePayment(payment: InsertStripePayment): Promise<StripePayment>;
   getStripePaymentBySessionId(sessionId: string): Promise<StripePayment | undefined>;
+  getAllStripePayments?(): Promise<StripePayment[]>;
   updateStripePaymentStatus(sessionId: string, status: string): Promise<void>;
+  updateStripePaymentMetadata?(sessionId: string, metadata: any): Promise<void>;
   completeStripePaymentAndCredit(sessionId: string, userId: number, tokens: number): Promise<{ alreadyCompleted: boolean; newBalance?: number }>;
+  
+  // Stripe event idempotency methods
+  createStripeEvent(event: InsertStripeEvent): Promise<StripeEvent>;
+  isEventProcessed(eventId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -317,6 +323,39 @@ export class DatabaseStorage implements IStorage {
       return { alreadyCompleted: false, newBalance };
     });
   }
+  
+  async createStripeEvent(insertEvent: InsertStripeEvent): Promise<StripeEvent> {
+    const [event] = await db
+      .insert(stripeEvents)
+      .values(insertEvent)
+      .returning();
+    return event;
+  }
+  
+  async getAllStripePayments(): Promise<StripePayment[]> {
+    return await db
+      .select()
+      .from(stripePayments)
+      .orderBy(stripePayments.createdAt);
+  }
+  
+  async updateStripePaymentMetadata(sessionId: string, metadata: any): Promise<void> {
+    await db
+      .update(stripePayments)
+      .set({ 
+        metadata,
+        updatedAt: new Date()
+      })
+      .where(eq(stripePayments.stripeSessionId, sessionId));
+  }
+  
+  async isEventProcessed(eventId: string): Promise<boolean> {
+    const [event] = await db
+      .select()
+      .from(stripeEvents)
+      .where(eq(stripeEvents.eventId, eventId));
+    return !!event;
+  }
 }
 
 export class MemStorage implements IStorage {
@@ -449,6 +488,22 @@ export class MemStorage implements IStorage {
   
   async completeStripePaymentAndCredit(sessionId: string, userId: number, tokens: number): Promise<{ alreadyCompleted: boolean; newBalance?: number }> {
     throw new Error("Stripe payments not supported in MemStorage");
+  }
+  
+  async createStripeEvent(event: InsertStripeEvent): Promise<StripeEvent> {
+    throw new Error("Stripe events not supported in MemStorage");
+  }
+  
+  async getAllStripePayments(): Promise<StripePayment[]> {
+    return [];
+  }
+  
+  async updateStripePaymentMetadata(sessionId: string, metadata: any): Promise<void> {
+    // No-op for MemStorage
+  }
+  
+  async isEventProcessed(eventId: string): Promise<boolean> {
+    return false;
   }
 }
 
