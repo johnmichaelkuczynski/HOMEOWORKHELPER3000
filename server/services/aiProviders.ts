@@ -98,6 +98,65 @@ function buildPresetBlock(selectedPresets?: string[], customInstructions?: strin
 const STYLE_SAMPLES = {
   // NEW SAMPLES WILL BE ADDED HERE
 
+  // Inferential knowledge and logical dependence style
+  "inferential_knowledge": `Inferential knowledge and logical dependence Two kinds of knowledge: direct and indirect
+Some knowledge is direct; some is indirect.
+Indirect knowledge is knowledge that is acquired through inference.
+To make an inference is to form a new belief on the basis of an old one.
+Inferences, when legitimate, are made in accordance with legitimate rules of inference. Rules of inference, when legitimate, correspond to dependence-relations.
+
+Two kinds of dependence-relations: causal and logical
+
+There are two kinds of dependence-relations: logical and causal.
+  Logical dependence-relations hold among propositions. A proposition is a truth or a falsehood.
+  Example of a logical dependence-relation: The proposition that x is a triangle cannot be true unless the proposition that x has three sides is true. Therefore, x s being a triangle depends on x s having three sides.
+  Causal relations hold among states of affairs, not truths and falsehoods. (A state of affairs is anything that is in space-time.)
+Example of a causal dependence-relation: Smith cannot pass the class unless Smith studies.
+Therefore, Smith s passing depends on his studying.
+The first-dependence relation is interpropositional, i.e. it holds between propositions.
+  The second is objectual, i.e. it holds between occupants of the space-time manifold and therefore between  objects,  relative to some delineation of that term.
+
+Propositions the objects of belief
+   The objects of knowledge are propositions. It isn't known unless it's believed and it isn't believed unless it's a proposition.
+   One can be aware of non-propositions, e.g. rocks, trees, people, but one does not in the relevant sense know them. Rather, one knows truths about them.
+
+Relations of logical dependence not known through observation
+   Some dependence-relations are known, not through sensory observation, but through conceptual analysis. Such truths are analytic, as opposed to empirical. Examples of analytic truths are:
+
+1. If P, then either P or Q.
+
+2. There are infinitely many primes.
+
+3. Nothing can be numerate or literate without being sentient.
+
+4. There are no laws where there is no government.
+
+5. There is no recursive definition of the class of Dedekind-cuts.
+
+6. 1+1=2.
+
+7. 1+1?3.
+
+
+  1 obviously expresses a dependence-relation, and 2-7 non-obviously do so, as their meanings are:
+
+
+  2*. A set s having finitely many members depends on its not having the set of prime numbers as a subset.
+
+3*. An entity s being literate or numerate depends on its being sentient. 4*. The presence of law depends on the presence of government.
+  5*. A set s having either finitely many or denumerably many members depends on its not having a cardinality equal to or greater than the cardinality of the class of Dedekind cuts.
+
+6*. A set s being a couple depends on its being the union of two non-overlapping unit sets. 7*. A set s being a triple depends on its not being the union of two non-overlapping unit sets.
+
+Analytic truth and analytic knowledge
+
+Analytic knowledge is always knowledge of dependence-relations.
+Empirical knowledge can be either direct or indirect; the same is true of analytic knowledge.
+
+Knowledge vs. awareness
+   Knowledge is conceptually articulated awareness. In order for me to know that my shoes are uncomfortably tight, I need to have the concepts shoe, tight, discomfort, etc. I do not need to have these concepts---or, arguably, any concepts---to be aware of the uncomfortable tightness in my shoes. My knowledge of that truth is a conceptualization of my awareness of that state of affairs.
+  Equivalently, there are two kinds of awareness: propositional and objectual. My visual perception of the dog in front of me is a case of objectual awareness, as is my awareness of the tightness of my shoes. My knowledge that there is a dog in front of me is a case of proposition- awareness, as is my knowledge that my shoes are uncomfortably tight.`,
+
   // Default formal academic sample
   "formal_academic": `DEFAULT STYLE SAMPLE (The Raven Paradox):
 
