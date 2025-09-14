@@ -82,3 +82,18 @@ The application employs a clear client-server architecture.
   - Enhanced status logging revealed payments were actually succeeding (e.g., 8,000 → 10,000 token balance increases)
   - Eliminated false negative "Payment failed" messages that occurred when UI timed out before Stripe completed payment flow
   - Production Stripe payment system now fully functional and user-facing error resolved
+
+### September 14, 2025
+- **Render Stripe Deployment Fixes**: Implemented comprehensive Render-specific fixes for production Stripe payment functionality
+  - Added reachability probes (`/__ping` and `/api/webhooks/stripe` GET endpoints) for Render deployment diagnostics
+  - Corrected webhook path from `/api/webhook/stripe` to `/api/webhooks/stripe` (plural) for consistency
+  - Enhanced webhook route ordering with proper placement before express.json() middleware for raw body access
+  - Added diagnostics endpoint (`/__diag/pay`) to verify environment configuration without exposing secrets
+  - Implemented live price credits fetching via line items for Render deployment compatibility
+  - Enhanced error handling with transient vs permanent error classification for proper Stripe retry behavior
+  - All Render-specific fixes validated and production-ready
+- **GPT BYPASS Database Fix RESOLVED**: Fixed critical "Humanization failed" error in both development and production
+  - Root cause: Missing database tables (`rewrite_jobs`, `documents`, `stripe_events`) causing relation errors
+  - Solution: Created all missing tables using direct SQL commands to restore full database schema
+  - Verified fix: Humanization API now responds correctly (200 OK) with proper AI detection scoring
+  - GPT BYPASS feature fully operational with chunked processing and rewriting capabilities restored
