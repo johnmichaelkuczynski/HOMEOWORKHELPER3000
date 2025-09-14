@@ -115,16 +115,47 @@ which, though logically equivalent, seem to confirmationally equivalent, in that
 A number of very contrived solutions to this paradox have been proposed, all of which either deny that there is a paradox or invent ad hoc systems of logic to validate the 'solution' in question. 
 But the real solution is clear. First of all, it is only principled generalizations that can be confirmed. Supposing that you assert (i) with the intention of affirming a principled as opposed to an accidental generalization, you are saying that instances of the property of being a raven grounds or causes instances of blackness. Read thus, (i) is most certainly not equivalent with (ii) or with any variation thereof. Be it noted that while there is a natural nomic or causal reading of (i), there is no such reading of (ii). Finally, the reason that we are not inclined to regard a non-black non-raven — say, a white shoe — as confirming "All ravens are black" is that we would never have adduced "All ravens are black" in the first place were we interested in making a point about white shoes, and so such white shoes are not, from the relevant point of view, supportive instances. A helpful analogy: "All books by Tom Clancy are popular" is confirmed by examples of popular Tom Clancy novels, but not by popular Stephen King novels, although "All books by Tom Clancy are popular" and "All books by people other than Tom Clancy that are not popular are books by people other than Tom Clancy" are logically equivalent.`;
 
-  let prompt = `Rewrite the text below so that its style matches, at a granular level, the style of the following style sample:\n"${styleSample}"\n\n`;
+  let prompt = `Your task is to rewrite the input text using the exact writing style demonstrated in the style sample below.
+
+CRITICAL: You must deeply analyze and adopt ALL stylistic elements from this sample:
+
+STYLE SAMPLE TO EMULATE:
+"${styleSample}"
+
+STYLE ANALYSIS REQUIREMENTS:
+1. SENTENCE STRUCTURE: Observe the sample's sentence length patterns, complexity, and rhythm. Notice how it uses simple vs complex sentences, coordination vs subordination, and sentence variety.
+
+2. VOCABULARY & WORD CHOICE: Pay attention to the formality level, technical terms, common vs sophisticated vocabulary, and any distinctive word preferences or patterns.
+
+3. TONE & VOICE: Identify the sample's attitude (formal/informal, confident/tentative, academic/conversational), perspective (first/third person), and emotional register.
+
+4. TRANSITIONS & FLOW: Notice how ideas connect - does it use explicit transitions, implicit connections, or specific linking strategies?
+
+5. ARGUMENTATIVE PATTERNS: Observe how the sample presents ideas, structures arguments, uses examples, and develops reasoning.
+
+6. PUNCTUATION & MECHANICS: Notice distinctive punctuation choices, use of parentheses, dashes, semicolons, and paragraph breaks.
+
+7. RHETORICAL DEVICES: Identify any characteristic use of questions, analogies, repetition, or other stylistic techniques.
+
+REWRITE INSTRUCTIONS:
+- Maintain the original content and meaning of the input text
+- Transform EVERY aspect of expression to match the style sample exactly
+- Use the same sentence patterns, vocabulary level, tone, and flow as the sample
+- Adopt the sample's characteristic way of connecting ideas and structuring arguments
+- Mirror the sample's punctuation patterns and paragraph structure
+- If the sample uses specific rhetorical devices, incorporate similar ones appropriately
+- The result should sound like it was written by the same author as the style sample
+
+`;
 
   if (hasContent) {
-    prompt += `Judiciously integrate relevant ideas, examples, and details from the following content reference to enrich the rewrite:\n"${params.contentMixText}"\n\n`;
+    prompt += `CONTENT INTEGRATION: Judiciously weave in relevant ideas, examples, and details from this reference material while maintaining the target style:\n"${params.contentMixText}"\n\n`;
   }
 
   // <<< PRESETS/APPLIED INSTRUCTIONS HERE >>>
   prompt += buildPresetBlock(params.selectedPresets, params.customInstructions);
 
-  prompt += `Text to rewrite:\n"${params.inputText}"`;
+  prompt += `INPUT TEXT TO REWRITE:\n"${params.inputText}"\n\nProduce only the rewritten text, maintaining the original meaning while fully adopting the style sample's characteristics:`;
   return prompt;
 }
 
