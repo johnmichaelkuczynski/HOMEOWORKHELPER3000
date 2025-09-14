@@ -5,7 +5,10 @@ import { setupVite, serveStatic, log } from "./vite";
 const app = express();
 
 // IMPORTANT: Webhook route must be BEFORE express.json() to get raw body
-app.post("/api/webhook/stripe", express.raw({ type: "application/json" }), async (req, res) => {
+// Quick reachability test (Render) - GET probe to confirm path exists
+app.get("/api/webhooks/stripe", (_req, res) => res.status(405).send("POST only"));
+
+app.post("/api/webhooks/stripe", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
   
